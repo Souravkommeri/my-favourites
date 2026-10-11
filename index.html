@@ -121,6 +121,7 @@ function render(){
 }
 function sync(){
   var on=isPlaying();
+  if('mediaSession' in navigator)navigator.mediaSession.playbackState=on?'playing':'paused';
   $('pp').textContent=on?'Pause':'Play';
   $('disc').className='disc'+(on?' on':'');
   var s=find(curId);
@@ -152,11 +153,27 @@ function stopYT(){if(ytReady&&ytp&&ytp.pauseVideo)ytp.pauseVideo();ytState=-1;pe
 function play(id){
   var s=find(id);if(!s)return;msg('');
   if(curId!==null&&curId!==id)hist.push(curId);
-  curId=id;$('now').textContent=s.title;
+  curId=id;$('now').textContent=s.title;setMedia(s);
   if(isYT(s)){audio.pause();$('ytbox').hidden=false;ytPlay(s.vid)}
   else{stopYT();$('ytbox').hidden=true;if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(s.blob);audio.src=url;initAudio();if(actx)actx.resume();audio.play().catch(function(){})}
   sync();
 }
+function setMedia(s){
+  if(!('mediaSession' in navigator))return;
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:"Sourav's Music Hub"})}catch(e){}
+}
+(function(){
+  if(!('mediaSession' in navigator))return;
+  var h={
+    play:function(){if(!isPlaying())toggle()},
+    pause:function(){if(isPlaying())toggle()},
+    nexttrack:function(){next()},
+    previoustrack:function(){prev()},
+    seekto:function(d){var s=find(curId);if(s&&!isYT(s)&&d.seekTime!=null)audio.currentTime=d.seekTime}
+  };
+  for(var k in h){try{navigator.mediaSession.setActionHandler(k,h[k])}catch(e){}}
+})();
+document.addEventListener('visibilitychange',function(){if(actx&&actx.state==='suspended'&&isPlaying())actx.resume()});
 function toggle(){
   var s=find(curId);
   if(!s){if(songs.length)play(pick());return}
